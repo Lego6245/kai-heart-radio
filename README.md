@@ -1,6 +1,10 @@
 # kai-heart-radio
 
-([Listen to the playlist here](https://open.spotify.com/user/1248422519/playlist/3zJ2HaPyALFHcyTZnh8BXl))
+([Listen to the playlist here](https://open.spotify.com/playlist/4rZUphu6YsAi4k0iNpq484?si=Gx6xxSBVSaSV1jlRdPzI4w))
+
+This is an updated fork desgigned to run on Azure Functions. The script has been updated to work with Python 3, but is otherwise unchanged.
+
+# Original ReadMe Follows
 
 The dog and I listen to Marketplace on APM during our walks to the park. The dog doesn't much care for it, but I love it, especially the music interludes.
 Marketplace publishes a list of the songs on their daily broadcasts. I found myself adding the songs to a Spotify playlist I listen to at work. Now kai-heart-radio does it for me.
