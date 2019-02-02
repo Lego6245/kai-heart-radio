@@ -1,3 +1,9 @@
+import datetime
+import logging
+
+import azure.functions as func
+
+
 """Kai Heart Radio
 
 Scrape songs from the Marketplace latest music page and add them to a Spotify playlist.
@@ -13,19 +19,19 @@ Options:
 """
 
 import requests
-import ConfigParser
+import configparser
 import logging
 import os
+import base64
 from docopt import docopt
 from datetime import datetime
 from uuid import uuid4
 from bs4 import BeautifulSoup
-from urllib2 import quote
-from base64 import b64encode
+from urllib.parse import quote
 from time import sleep
 
 
-config = ConfigParser.ConfigParser()
+config = configparser.ConfigParser()
 config_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'config.txt')
 config.read(config_path)
 
@@ -80,9 +86,11 @@ def search_song(title, artist):
 	"""
 	title = quote(title, safe='')
 	artist = quote(artist, safe='')
+	token = get_token()
+	headers = {'Authorization': 'Bearer ' + token}
 	base_url = SPOTIFY_API_HOST + 'search/' + '?q=track:{0}+artist:{1}&type=track&limit=1'
 	url = base_url.format(title, artist)
-	results = requests.get(url).json()
+	results = requests.get(url, headers=headers).json()
 
 	try:
 		if results['tracks']['total'] == 0:
@@ -146,7 +154,7 @@ def page_to_playlist(url, playlist_id, user_id, daily=True):
 	if not songs:
 		return
 	uris = [search_song(song['title'], song['artist']) for song in songs]
-	uris = filter(None, uris)
+	uris = list(filter(None, uris))
 	if daily:
 		latest_playlist_songs = get_playlist_contents(
 			playlist_id, user_id, len(uris))
@@ -183,29 +191,29 @@ def get_token():
 	url = SPOTIFY_ACCOUNT_HOST + 'token'
 	current_refresh_token = config.get('spotify_credentials', 'refresh_token')
 	body = {'grant_type': 'refresh_token', 'refresh_token': current_refresh_token}
-	auth_header = 'Basic ' + b64encode('{0}:{1}'.format(SPOTIFY_CLIENT_ID, 
-		SPOTIFY_CLIENT_SECRET))
+	auth_header = 'Basic ' + base64.b64encode(
+		bytes('{0}:{1}'.format(SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET), 'utf-8')).decode()
 	headers = {'Authorization': auth_header}
 
 	response = requests.post(url, headers=headers, data=body).json()
-	if response.has_key('refresh_token'):
+	if 'refresh_token' in response:
 		logging.debug('Received new refresh token')
 		config.set('spotify_credentials', 'refresh_token', 
 			response['refresh_token'])
 	return response['access_token']
 
 
-def main(arguments):
-	log_level = logging.DEBUG if arguments['-d'] else logging.INFO
+def main(req):
+	#type = req.params.get('type')
+	log_level = logging.DEBUG
 	logging.basicConfig(level=log_level)
 	logging.info('\n\nBeginning log {0}'.format(datetime.now()))
 
-	if arguments['bootstrap']:
-		pages = arguments['<pages>']
-		bootstrap_playlist(SPOTIFY_PLAYLIST_ID, SPOTIFY_USER_ID, pages)
-	elif arguments['daily']:
-		page_to_playlist('http://www.marketplace.org/latest-music', 
-			SPOTIFY_PLAYLIST_ID, SPOTIFY_USER_ID)
+	# if type == 'bootstrap':
+	# 	bootstrap_playlist(SPOTIFY_PLAYLIST_ID, SPOTIFY_USER_ID, 20)
+	#elif type  == 'daily':
+	page_to_playlist('http://www.marketplace.org/latest-music', 
+		SPOTIFY_PLAYLIST_ID, SPOTIFY_USER_ID)
 
 	logging.info('End log {0}'.format(datetime.now()))
 
